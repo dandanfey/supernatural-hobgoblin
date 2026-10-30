@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aventura RPG Textual</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #game-container {
+            background-color: #1e1e1e;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+            border: 1px solid #333;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #4caf50;
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #story-text {
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            line-height: 1.6;
+            min-height: 100px;
+        }
+        .btn-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .btn {
+            background-color: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 12px;
+            font-size: 1em;
+            font-family: inherit;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .btn:hover {
+            background-color: #555;
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div class="stats">
+            <span>❤️ Vida: <span id="hp">50</span></span>
+            <span>🪙 Ouro: <span id="gold">0</span></span>
+        </div>
+        <div id="story-text">Carregando a sua jornada...</div>
+        <div id="option-buttons" class="btn-grid"></div>
+    </div>
+
+    <script>
+        const textElement = document.getElementById('story-text');
+        const optionButtonsElement = document.getElementById('option-buttons');
+        const hpElement = document.getElementById('hp');
+        const goldElement = document.getElementById('gold');
+
+        // Estado atual do jogador
+        let characterStats = { hp: 50, gold: 0 };
+
+        function startGame() {
+            characterStats = { hp: 50, gold: 20 };
+            showTextNode(1);
+        }
+
+        function updateStats() {
+            hpElement.innerText = characterStats.hp;
+            goldElement.innerText = characterStats.gold;
+        }
+
+        function showTextNode(textNodeIndex) {
+            updateStats();
+            
+            // Verifica se o jogador morreu
+            if (characterStats.hp <= 0) {
+                textNodeIndex = 99; // ID da tela de Game Over
+            }
+
+            const textNode = textNodes.find(node => node.id === textNodeIndex);
+            textElement.innerText = textNode.text;
+            
+            // Limpa os botões antigos
+            while (optionButtonsElement.firstChild) {
+                optionButtonsElement.removeChild(optionButtonsElement.firstChild);
+            }
+
+            // Cria os novos botões baseados nas opções do nó atual
+            textNode.options.forEach(option => {
+                if (showOption(option)) {
+                    const button = document.createElement('button');
+                    button.innerText = option.text;
+                    button.classList.add('btn');
+                    button.addEventListener('click', () => selectOption(option));
+                    optionButtonsElement.appendChild(button);
+                }
+            });
+        }
+
+        function showOption(option) {
+            // Mostra a opção apenas se o jogador cumprir os requisitos (ex: ter ouro suficiente)
+            return option.requiredState == null || option.requiredState(characterStats);
+        }
+
+        function selectOption(option) {
+            const nextTextNodeId = option.nextText;
+            
+            // Se o ID for menor ou igual a zero, reinicia o jogo
+            if (nextTextNodeId <= 0) {
+                return startGame();
+            }
+
+            // Atualiza os status se a opção tiver modificadores
+            if (option.setState) {
+                characterStats.hp = (option.setState.hp !== undefined) ? option.setState.hp : characterStats.hp;
+                characterStats.gold = (option.setState.gold !== undefined) ? option.setState.gold : characterStats.gold;
+            }
+            
+            showTextNode(nextTextNodeId);
+        }
+
+        // AQUI FICA A HISTÓRIA - Você pode adicionar quantos blocos quiser
+        const textNodes = [
+            {
+                id: 1,
+                text: 'O vento uiva e você acorda em uma floresta enevoada. Não há memórias de como chegou ali. À sua frente, o caminho se divide.',
+                options: [
+                    { text: 'Seguir pela trilha de terra batida', nextText: 2 },
+                    { text: 'Entrar na caverna escura à direita', nextText: 3 }
+                ]
+            },
+            {
+                id: 2,
+                text: 'A trilha te leva até um mercador idoso com uma carroça capenga. Ele te oferece um frasco com um líquido vermelho brilhante.',
+                options: [
+                    { 
+                        text: 'Comprar Poção de Cura (-15 Ouro, +30 HP)', 
+                        requiredState: (currentState) => currentState.gold >= 15, 
+                        setState: { hp: characterStats.hp + 30, gold: characterStats.gold - 15 }, 
+                        nextText: 4 
+                    },
+                    { text: 'Ignorar o mercador e continuar andando', nextText: 4 }
+                ]
+            },
+            {
+                id: 3,
+                text: 'A caverna é úmida. Mais à frente, um pequeno Goblin dorme abraçado a um baú de madeira.',
+                options: [
+                    { text: 'Tentar abrir o baú sem acordá-lo', nextText: 5 },
+                    { text: 'Atacar o Goblin de surpresa', nextText: 6 }
+                ]
+            },
+            {
+                id: 4,
+                text: 'Você chega aos portões de um castelo em ruínas. Um guarda esqueleto bloqueia a passagem com uma lança enferrujada.',
+                options: [
+                    { text: 'Lutar contra o Esqueleto', nextText: 7 },
+                    { text: 'Tentar suborná-lo com moedas', nextText: 8 }
+                ]
+            },
+            {
+                id: 5,
+                text: 'A dobradiça do baú range! O Goblin acorda no susto, joga um punhado de moedas no chão e foge correndo para a escuridão.',
+                options: [
+                    { 
+                        text: 'Recolher o ouro e sair da caverna (+40 Ouro)', 
+                        setState: { gold: characterStats.gold + 40 }, 
+                        nextText: 4 
+                    }
+                ]
+            },
+            {
+                id: 6,
+                text: 'O Goblin é ágil e te arranha antes de fugir, mas você consegue abrir o baú e encontrar tesouros.',
+                options: [
+                    { 
+                        text: 'Pegar o tesouro e seguir (-15 HP, +50 Ouro)', 
+                        setState: { hp: characterStats.hp - 15, gold: characterStats.gold + 50 }, 
+                        nextText: 4 
+                    }
+                ]
+            },
+            {
+                id: 7,
+                text: 'A batalha é dura. Ossos quebram e você se fere bastante, mas o esqueleto finalmente desmorona em pó.',
+                options: [
+                    { 
+                        text: 'Entrar no castelo vitorioso (-30 HP)', 
+                        setState: { hp: characterStats.hp - 30 }, 
+                        nextText: 10 
+                    }
+                ]
+            },
+            {
+                id: 8,
+                text: 'Você estende algumas moedas de ouro. O esqueleto as pega, guarda nas costelas (onde elas caem no chão) e abre o portão.',
+                options: [
+                    { 
+                        text: 'Entrar no castelo (-20 Ouro)', 
+                        requiredState: (currentState) => currentState.gold >= 20, 
+                        setState: { gold: characterStats.gold - 20 }, 
+                        nextText: 10 
+                    },
+                    { text: 'Eu não tenho ouro suficiente... voltar para a luta', nextText: 7 }
+                ]
+            },
+            {
+                id: 10,
+                text: 'Você entrou no grande salão do castelo. Sua jornada épica está apenas começando! (Fim da demonstração)',
+                options: [
+                    { text: 'Jogar Novamente', nextText: -1 }
+                ]
+            },
+            {
+                id: 99,
+                text: 'Sua visão escurece. Você não suportou os ferimentos e caiu em combate. GAME OVER.',
+                options: [
+                    { text: 'Tentar Novamente', nextText: -1 }
+                ]
+            }
+        ];
+
+        // Inicia o jogo ao carregar a página
+        startGame();
+    </script>
+</body>
+</html>
